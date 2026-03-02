@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>路径回溯</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #08AEEA 0%, #2AF598 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .game-container {
+            background: white;
+            border-radius: 30px;
+            padding: 30px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 95%;
+        }
+        .game-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        .game-title {
+            font-size: 36px;
+            color: #333;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #08AEEA 0%, #2AF598 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: linear-gradient(135deg, #e3fdfd 0%, #cbf1f5 100%);
+            border-radius: 15px;
+        }
+        .info-item {
+            text-align: center;
+            background: white;
+            padding: 12px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .info-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        .game-grid {
+            display: grid;
+            gap: 2px;
+            padding: 20px;
+            background: #2c3e50;
+            border-radius: 20px;
+            margin-bottom: 25px;
+            position: relative;
+        }
+        .grid-cell {
+            aspect-ratio: 1;
+            background: #ecf0f1;
+            border: 1px solid #bdc3c7;
+            border-radius: 8px;
+            position: relative;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .grid-cell:hover {
+            background: #d5dbdd;
+            transform: scale(0.95);
+        }
+        .grid-cell.start {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            box-shadow: 0 0 20px rgba(52, 152, 219, 0.5);
+        }
+        .grid-cell.end {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            box-shadow: 0 0 20px rgba(231, 76, 60, 0.5);
+        }
+        .grid-cell.path {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            animation: pathGlow 1s ease-in-out;
+        }
+        .grid-cell.user-path {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+        }
+        .grid-cell.correct {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            animation: correctPulse 0.5s;
+        }
+        .grid-cell.wrong {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            animation: wrongShake 0.5s;
+        }
+        .grid-cell.obstacle {
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            cursor: not-allowed;
+        }
+        @keyframes pathGlow {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes correctPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .character {
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            top: 10%;
+            left: 10%;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #8e44ad, #9b59b6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            transition: all 0.5s ease-in-out;
+            z-index: 10;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        .path-indicator {
+            position: absolute;
+            width: 60%;
+            height: 60%;
+            top: 20%;
+            left: 20%;
+            border-radius: 50%;
+            background: rgba(243, 156, 18, 0.6);
+            animation: pulse 1s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+        .control-section {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            padding: 15px 35px;
+            font-size: 18px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #08AEEA 0%, #2AF598 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(8, 174, 234, 0.4);
+        }
+        .btn-secondary {
+            background: #ecf0f1;
+            color: #2c3e50;
+        }
+        .btn-secondary:hover {
+            background: #bdc3c7;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+        }
+        .btn-success:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(46, 204, 113, 0.4);
+        }
+        .phase-indicator {
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            font-size: 20px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #ecf0f1;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2ecc71, #3498db);
+            transition: width 0.3s ease;
+        }
+        .config-panel {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .config-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .config-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .config-input, .config-select {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+        }
+        .result-panel {
+            text-align: center;
+            padding: 40px;
+            background: linear-gradient(135deg, #e3fdfd 0%, #cbf1f5 100%);
+            border-radius: 20px;
+        }
+        .result-title {
+            font-size: 42px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .result-score {
+            font-size: 64px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #08AEEA 0%, #2AF598 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 30px;
+        }
+        .instructions {
+            text-align: center;
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .direction-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 80px);
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .dir-btn {
+            padding: 20px;
+            font-size: 24px;
+            border: none;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .dir-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        .dir-btn:active {
+            transform: scale(0.95);
+        }
+        .dir-btn:nth-child(2) { grid-column: 2; }
+        .dir-btn:nth-child(3) { grid-column: 1; }
+        .dir-btn:nth-child(4) { grid-column: 2; }
+        .dir-btn:nth-child(5) { grid-column: 3; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        const PathTraceGame = () => {
+            // 游戏配置
+            const [config, setConfig] = useState({
+                duration_seconds: 120,
+                difficulty: 'medium', // easy, medium, hard
+                grid_size: 6, // 5x5, 6x6, 8x8
+                path_length: 6,
+                show_time: 3000, // 显示路径时间
+                obstacles: false,
+                speed_multiplier: 1,
+                bonus_points: 10,
+                penalty_points: 5
+            });
+
+            // 游戏状态
+            const [gameState, setGameState] = useState('config'); // config, showing, tracing, result
+            const [score, setScore] = useState(0);
+            const [level, setLevel] = useState(1);
+            const [timeLeft, setTimeLeft] = useState(config.duration_seconds);
+            const [grid, setGrid] = useState([]);
+            const [path, setPath] = useState([]);
+            const [userPath, setUserPath] = useState([]);
+            const [characterPos, setCharacterPos] = useState(null);
+            const [showingIndex, setShowingIndex] = useState(-1);
+            const [correctPaths, setCorrectPaths] = useState(0);
+            const [totalAttempts, setTotalAttempts] = useState(0);
+            const [phase, setPhase] = useState('');
+
+            const timerRef = useRef(null);
+            const showPathRef = useRef(null);
+
+            // 根据难度调整参数
+            useEffect(() => {
+                let gridSize, pathLength, showTime, obstacles;
+                switch (config.difficulty) {
+                    case 'easy':
+                        gridSize = 5;
+                        pathLength = 5;
+                        showTime = 4000;
+                        obstacles = false;
+                        break;
+                    case 'hard':
+                        gridSize = 8;
+                        pathLength = 10;
+                        showTime = 2000;
+                        obstacles = true;
+                        break;
+                    default:
+                        gridSize = 6;
+                        pathLength = 7;
+                        showTime = 3000;
+                        obstacles = false;
+                }
+                setConfig(prev => ({
+                    ...prev,
+                    grid_size: gridSize,
+                    path_length: pathLength,
+                    show_time: showTime,
+                    obstacles
+                }));
+            }, [config.difficulty]);
+
+            // 初始化网格
+            const initializeGrid = useCallback(() => {
+                const size = config.grid_size;
+                const newGrid = [];
+                for (let i = 0; i < size * size; i++) {
+                    newGrid.push({
+                        id: i,
+                        row: Math.floor(i / size),
+                        col: i % size,
+                        type: 'empty',
+                        isObstacle: false
+                    });
+                }
+                
+                // 添加障碍物
+                if (config.obstacles) {
+                    const obstacleCount = Math.floor(size * size * 0.15);
+                    const obstacles = new Set();
+                    while (obstacles.size < obstacleCount) {
+                        const idx = Math.floor(Math.random() * (size * size));
+                        obstacles.add(idx);
+                    }
+                    obstacles.forEach(idx => {
+                        newGrid[idx].isObstacle = true;
+                        newGrid[idx].type = 'obstacle';
+                    });
+                }
+                
+                return newGrid;
+            }, [config.grid_size, config.obstacles]);
+
+            // 生成路径
+            const generatePath = useCallback((grid) => {
+                const size = config.grid_size;
+                const pathLength = Math.min(config.path_length + Math.floor(level / 2), size * size - 1);
+                const path = [];
+                const visited = new Set();
+                
+                // 找一个非障碍起点
+                let start;
+                do {
+                    start = Math.floor(Math.random() * (size * size));
+                } while (grid[start].isObstacle);
+                
+                path.push(start);
+                visited.add(start);
+                
+                // 生成路径
+                let current = start;
+                let attempts = 0;
+                while (path.length < pathLength && attempts < 100) {
+                    const neighbors = getValidNeighbors(current, size, grid, visited);
+                    if (neighbors.length === 0) {
+                        // 回溯
+                        if (path.length > 1) {
+                            visited.delete(current);
+                            path.pop();
+                            current = path[path.length - 1];
+                        } else {
+                            break;
+                        }
+                    } else {
+                        const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+                        path.push(next);
+                        visited.add(next);
+                        current = next;
+                    }
+                    attempts++;
+                }
+                
+                return path;
+            }, [config.grid_size, config.path_length, level]);
+
+            // 获取有效邻居
+            const getValidNeighbors = (index, size, grid, visited) => {
+                const neighbors = [];
+                const row = Math.floor(index / size);
+                const col = index % size;
+                
+                // 上
+                if (row > 0) {
+                    const idx = (row - 1) * size + col;
+                    if (!visited.has(idx) && !grid[idx].isObstacle) {
+                        neighbors.push(idx);
+                    }
+                }
+                // 下
+                if (row < size - 1) {
+                    const idx = (row + 1) * size + col;
+                    if (!visited.has(idx) && !grid[idx].isObstacle) {
+                        neighbors.push(idx);
+                    }
+                }
+                // 左
+                if (col > 0) {
+                    const idx = row * size + (col - 1);
+                    if (!visited.has(idx) && !grid[idx].isObstacle) {
+                        neighbors.push(idx);
+                    }
+                }
+                // 右
+                if (col < size - 1) {
+                    const idx = row * size + (col + 1);
+                    if (!visited.has(idx) && !grid[idx].isObstacle) {
+                        neighbors.push(idx);
+                    }
+                }
+                
+                return neighbors;
+            };
+
+            // 开始游戏
+            const startGame = () => {
+                setGameState('showing');
+                setScore(0);
+                setLevel(1);
+                setTimeLeft(config.duration_seconds);
+                setCorrectPaths(0);
+                setTotalAttempts(0);
+                startNewRound();
+                
+                // 开始计时
+                timerRef.current = setInterval(() => {
+                    setTimeLeft(prev => {
+                        if (prev <= 1) {
+                            endGame();
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+            };
+
+            // 开始新回合
+            const startNewRound = () => {
+                const newGrid = initializeGrid();
+                const newPath = generatePath(newGrid);
+                
+                setGrid(newGrid);
+                setPath(newPath);
+                setUserPath([]);
+                setCharacterPos(newPath[0]);
+                setPhase('观察路径');
+                
+                // 显示路径
+                showPath(newPath);
+            };
+
+            // 显示路径动画
+            const showPath = (pathToShow) => {
+                setGameState('showing');
+                let index = 0;
+                
+                const animate = () => {
+                    if (index < pathToShow.length) {
+                        setShowingIndex(index);
+                        setCharacterPos(pathToShow[index]);
+                        index++;
+                        showPathRef.current = setTimeout(animate, config.show_time / pathToShow.length);
+                    } else {
+                        // 显示完成，开始玩家回溯
+                        setTimeout(() => {
+                            setGameState('tracing');
+                            setPhase('复现路径');
+                            setCharacterPos(pathToShow[0]);
+                            setUserPath([pathToShow[0]]);
+                            setShowingIndex(-1);
+                        }, 500);
+                    }
+                };
+                
+                animate();
+            };
+
+            // 处理格子点击
+            const handleCellClick = (cellId) => {
+                if (gameState !== 'tracing') return;
+                if (grid[cellId].isObstacle) return;
+                
+                const currentPos = userPath[userPath.length - 1];
+                const size = config.grid_size;
+                
+                // 检查是否相邻
+                if (isAdjacent(currentPos, cellId, size)) {
+                    const newUserPath = [...userPath, cellId];
+                    setUserPath(newUserPath);
+                    setCharacterPos(cellId);
+                    
+                    // 检查路径是否完成
+                    if (newUserPath.length === path.length) {
+                        checkPath(newUserPath);
+                    }
+                }
+            };
+
+            // 处理方向键移动
+            const handleDirectionMove = (direction) => {
+                if (gameState !== 'tracing') return;
+                
+                const currentPos = userPath[userPath.length - 1];
+                const size = config.grid_size;
+                const row = Math.floor(currentPos / size);
+                const col = currentPos % size;
+                let newPos = currentPos;
+                
+                switch (direction) {
+                    case 'up':
+                        if (row > 0) newPos = (row - 1) * size + col;
+                        break;
+                    case 'down':
+                        if (row < size - 1) newPos = (row + 1) * size + col;
+                        break;
+                    case 'left':
+                        if (col > 0) newPos = row * size + (col - 1);
+                        break;
+                    case 'right':
+                        if (col < size - 1) newPos = row * size + (col + 1);
+                        break;
+                }
+                
+                if (newPos !== currentPos && !grid[newPos].isObstacle) {
+                    const newUserPath = [...userPath, newPos];
+                    setUserPath(newUserPath);
+                    setCharacterPos(newPos);
+                    
+                    if (newUserPath.length === path.length) {
+                        checkPath(newUserPath);
+                    }
+                }
+            };
+
+            // 检查是否相邻
+            const isAdjacent = (pos1, pos2, size) => {
+                const row1 = Math.floor(pos1 / size);
+                const col1 = pos1 % size;
+                const row2 = Math.floor(pos2 / size);
+                const col2 = pos2 % size;
+                
+                return (Math.abs(row1 - row2) === 1 && col1 === col2) ||
+                       (Math.abs(col1 - col2) === 1 && row1 === row2);
+            };
+
+            // 检查路径
+            const checkPath = (userPath) => {
+                setTotalAttempts(totalAttempts + 1);
+                
+                const isCorrect = userPath.every((pos, idx) => pos === path[idx]);
+                
+                if (isCorrect) {
+                    // 正确
+                    const baseScore = level * config.bonus_points;
+                    const timeBonus = Math.floor(timeLeft / 10);
+                    setScore(score + baseScore + timeBonus);
+                    setCorrectPaths(correctPaths + 1);
+                    setLevel(level + 1);
+                    
+                    // 显示成功反馈
+                    setTimeout(() => {
+                        if (timeLeft > 10) {
+                            startNewRound();
+                        } else {
+                            endGame();
+                        }
+                    }, 1000);
+                } else {
+                    // 错误
+                    setScore(Math.max(0, score - config.penalty_points));
+                    
+                    // 重新显示路径
+                    setTimeout(() => {
+                        setUserPath([]);
+                        showPath(path);
+                    }, 1000);
+                }
+            };
+
+            // 重置当前路径
+            const resetPath = () => {
+                if (gameState === 'tracing') {
+                    setUserPath([path[0]]);
+                    setCharacterPos(path[0]);
+                }
+            };
+
+            // 结束游戏
+            const endGame = () => {
+                setGameState('result');
+                clearInterval(timerRef.current);
+                clearTimeout(showPathRef.current);
+            };
+
+            // 重置游戏
+            const resetGame = () => {
+                setGameState('config');
+                clearInterval(timerRef.current);
+                clearTimeout(showPathRef.current);
+            };
+
+            // 更新配置
+            const updateConfig = (key, value) => {
+                setConfig(prev => ({
+                    ...prev,
+                    [key]: value
+                }));
+            };
+
+            // 键盘事件
+            useEffect(() => {
+                const handleKeyPress = (e) => {
+                    if (gameState !== 'tracing') return;
+                    
+                    switch(e.key) {
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            handleDirectionMove('up');
+                            break;
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            handleDirectionMove('down');
+                            break;
+                        case 'ArrowLeft':
+                            e.preventDefault();
+                            handleDirectionMove('left');
+                            break;
+                        case 'ArrowRight':
+                            e.preventDefault();
+                            handleDirectionMove('right');
+                            break;
+                    }
+                };
+                
+                window.addEventListener('keydown', handleKeyPress);
+                return () => window.removeEventListener('keydown', handleKeyPress);
+            }, [gameState, userPath, path, grid]);
+
+            // 清理
+            useEffect(() => {
+                return () => {
+                    clearInterval(timerRef.current);
+                    clearTimeout(showPathRef.current);
+                };
+            }, []);
+
+            // micro-APP接口
+            useEffect(() => {
+                if (window.microApp) {
+                    window.microApp.addDataListener((data) => {
+                        if (data.config) {
+                            setConfig(prev => ({
+                                ...prev,
+                                ...data.config
+                            }));
+                        }
+                    });
+                    
+                    window.microApp.dispatch({
+                        type: 'game-ready',
+                        data: { name: 'path-trace-game' }
+                    });
+                }
+            }, []);
+
+            // 计算准确率
+            const accuracy = totalAttempts > 0 
+                ? Math.round((correctPaths / totalAttempts) * 100) 
+                : 0;
+
+            // 获取格子样式
+            const getCellClass = (cellId) => {
+                let classes = 'grid-cell';
+                
+                if (grid[cellId]?.isObstacle) {
+                    classes += ' obstacle';
+                } else if (path[0] === cellId) {
+                    classes += ' start';
+                } else if (path[path.length - 1] === cellId) {
+                    classes += ' end';
+                } else if (gameState === 'showing' && path.slice(0, showingIndex + 1).includes(cellId)) {
+                    classes += ' path';
+                } else if (gameState === 'tracing' && userPath.includes(cellId)) {
+                    const isCorrect = userPath.every((pos, idx) => path[idx] === pos);
+                    classes += isCorrect ? ' user-path' : ' wrong';
+                }
+                
+                return classes;
+            };
+
+            return (
+                <div className="game-container">
+                    <div className="game-header">
+                        <h1 className="game-title">路径回溯</h1>
+                    </div>
+
+                    {gameState === 'config' && (
+                        <>
+                            <div className="config-panel">
+                                <h3 style={{marginBottom: '20px', textAlign: 'center'}}>游戏设置</h3>
+                                <div className="config-grid">
+                                    <div className="config-item">
+                                        <label className="config-label">游戏时长（秒）:</label>
+                                        <input
+                                            type="number"
+                                            className="config-input"
+                                            value={config.duration_seconds}
+                                            onChange={(e) => updateConfig('duration_seconds', parseInt(e.target.value))}
+                                            min="60"
+                                            max="300"
+                                        />
+                                    </div>
+                                    <div className="config-item">
+                                        <label className="config-label">难度等级:</label>
+                                        <select
+                                            className="config-select"
+                                            value={config.difficulty}
+                                            onChange={(e) => updateConfig('difficulty', e.target.value)}
+                                        >
+                                            <option value="easy">简单</option>
+                                            <option value="medium">中等</option>
+                                            <option value="hard">困难</option>
+                                        </select>
+                                    </div>
+                                    <div className="config-item">
+                                        <label className="config-label">路径长度:</label>
+                                        <input
+                                            type="number"
+                                            className="config-input"
+                                            value={config.path_length}
+                                            onChange={(e) => updateConfig('path_length', parseInt(e.target.value))}
+                                            min="4"
+                                            max="15"
+                                        />
+                                    </div>
+                                    <div className="config-item">
+                                        <label className="config-label">显示时间（毫秒）:</label>
+                                        <input
+                                            type="number"
+                                            className="config-input"
+                                            value={config.show_time}
+                                            onChange={(e) => updateConfig('show_time', parseInt(e.target.value))}
+                                            min="1000"
+                                            max="6000"
+                                        />
+                                    </div>
+                                    <div className="config-item">
+                                        <label className="config-label">正确奖励分数:</label>
+                                        <input
+                                            type="number"
+                                            className="config-input"
+                                            value={config.bonus_points}
+                                            onChange={(e) => updateConfig('bonus_points', parseInt(e.target.value))}
+                                            min="5"
+                                            max="50"
+                                        />
+                                    </div>
+                                    <div className="config-item">
+                                        <label className="config-label">错误扣除分数:</label>
+                                        <input
+                                            type="number"
+                                            className="config-input"
+                                            value={config.penalty_points}
+                                            onChange={(e) => updateConfig('penalty_points', parseInt(e.target.value))}
+                                            min="0"
+                                            max="20"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="control-section">
+                                <button className="btn btn-primary" onClick={startGame}>
+                                    开始游戏
+                                </button>
+                            </div>
+                        </>
+                    )}
+
+                    {(gameState === 'showing' || gameState === 'tracing') && (
+                        <>
+                            <div className="info-panel">
+                                <div className="info-item">
+                                    <div className="info-label">得分</div>
+                                    <div className="info-value">{score}</div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="info-label">关卡</div>
+                                    <div className="info-value">{level}</div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="info-label">准确率</div>
+                                    <div className="info-value">{accuracy}%</div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="info-label">时间</div>
+                                    <div className="info-value">{timeLeft}s</div>
+                                </div>
+                            </div>
+
+                            <div className="phase-indicator">
+                                {phase} - {gameState === 'showing' ? '请仔细观察' : '点击格子复现路径'}
+                            </div>
+
+                            {gameState === 'tracing' && (
+                                <div className="progress-bar">
+                                    <div 
+                                        className="progress-fill"
+                                        style={{width: `${(userPath.length / path.length) * 100}%`}}
+                                    ></div>
+                                </div>
+                            )}
+
+                            <div 
+                                className="game-grid"
+                                style={{
+                                    gridTemplateColumns: `repeat(${config.grid_size}, 1fr)`
+                                }}
+                            >
+                                {grid.map((cell) => (
+                                    <div
+                                        key={cell.id}
+                                        className={getCellClass(cell.id)}
+                                        onClick={() => handleCellClick(cell.id)}
+                                    >
+                                        {characterPos === cell.id && (
+                                            <div className="character">🤖</div>
+                                        )}
+                                        {gameState === 'showing' && path.includes(cell.id) && 
+                                         path.indexOf(cell.id) <= showingIndex && 
+                                         path.indexOf(cell.id) > 0 && 
+                                         path.indexOf(cell.id) < path.length - 1 && (
+                                            <div className="path-indicator"></div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {gameState === 'tracing' && (
+                                <>
+                                    <div className="instructions">
+                                        使用方向键或点击相邻格子来移动机器人
+                                    </div>
+                                    <div className="direction-buttons">
+                                        <button 
+                                            className="dir-btn"
+                                            onClick={() => handleDirectionMove('up')}
+                                        >↑</button>
+                                        <button 
+                                            className="dir-btn"
+                                            onClick={() => handleDirectionMove('left')}
+                                        >←</button>
+                                        <button 
+                                            className="dir-btn"
+                                            onClick={() => handleDirectionMove('down')}
+                                        >↓</button>
+                                        <button 
+                                            className="dir-btn"
+                                            onClick={() => handleDirectionMove('right')}
+                                        >→</button>
+                                    </div>
+                                    <div className="control-section">
+                                        <button className="btn btn-secondary" onClick={resetPath}>
+                                            重置路径
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </>
+                    )}
+
+                    {gameState === 'result' && (
+                        <div className="result-panel">
+                            <h2 className="result-title">游戏结束！</h2>
+                            <div className="result-score">{score} 分</div>
+                            <div className="info-panel" style={{marginTop: '30px'}}>
+                                <div className="info-item">
+                                    <div className="info-label">最高关卡</div>
+                                    <div className="info-value">{level}</div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="info-label">准确率</div>
+                                    <div className="info-value">{accuracy}%</div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="info-label">成功次数</div>
+                                    <div className="info-value">{correctPaths}</div>
+                                </div>
+                                <div className="info-item">
+                                    <div className="info-label">总尝试次数</div>
+                                    <div className="info-value">{totalAttempts}</div>
+                                </div>
+                            </div>
+                            <div className="control-section" style={{marginTop: '30px'}}>
+                                <button className="btn btn-primary" onClick={resetGame}>
+                                    再来一次
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<PathTraceGame />, document.getElementById('root'));
+    </script>
+</body>
+</html>

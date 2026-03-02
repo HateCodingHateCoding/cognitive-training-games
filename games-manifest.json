@@ -1,0 +1,66 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-03-02",
+  "games": [
+    {
+      "id": "path-trace",
+      "name": "路径回溯",
+      "desc": "记忆并重现机器人走过的路径，训练空间记忆",
+      "author": "胡一凡",
+      "entry": "路径回溯游戏——胡一凡/路径回溯游戏本体.html",
+      "version": "1.0.0",
+      "icon": "🤖",
+      "tags": ["空间记忆", "路径"]
+    },
+    {
+      "id": "color-match",
+      "name": "颜色匹配大师",
+      "desc": "在相似色彩中快速找到目标颜色，训练视觉辨别",
+      "author": "胡一凡",
+      "entry": "颜色匹配大师游戏——胡一凡/颜色匹配大师游戏本体.html",
+      "version": "1.0.0",
+      "icon": "🎨",
+      "tags": ["视觉", "颜色辨别"]
+    },
+    {
+      "id": "memory-cards",
+      "name": "记忆翻牌配对",
+      "desc": "翻转卡片找到匹配对，训练短期记忆",
+      "author": "杨健舒",
+      "entry": "记忆翻牌配对游戏——杨健舒/matching-game.html",
+      "version": "1.0.0",
+      "icon": "🃏",
+      "tags": ["短期记忆", "配对"]
+    },
+    {
+      "id": "stroop",
+      "name": "干扰词辨识",
+      "desc": "识别文字的颜色而非含义，训练执行控制",
+      "author": "杨健舒",
+      "entry": "干扰词辨识游戏——杨健舒/stroop-game.html",
+      "version": "1.0.0",
+      "icon": "🧠",
+      "tags": ["执行功能", "注意力"]
+    },
+    {
+      "id": "rhythm",
+      "name": "节奏跟随",
+      "desc": "跟随节拍点击脉冲球，训练节奏感与协调性",
+      "author": "王淞鹤",
+      "entry": "节奏跟随游戏——王淞鹤/rhythm-game.html",
+      "version": "1.0.0",
+      "icon": "🎵",
+      "tags": ["节奏", "协调"]
+    },
+    {
+      "id": "spatial-memory",
+      "name": "空间定位记忆",
+      "desc": "记忆并点击网格上的图案位置，训练空间定位",
+      "author": "王淞鹤",
+      "entry": "空间定位记忆游戏——王淞鹤/memory-game.html",
+      "version": "1.0.0",
+      "icon": "🗺️",
+      "tags": ["空间记忆", "定位"]
+    }
+  ]
+}

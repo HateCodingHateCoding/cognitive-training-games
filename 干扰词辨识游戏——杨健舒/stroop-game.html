@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>干扰词辨识游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 32px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .game-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .game-subtitle {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .game-stats {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: #f3f4f6;
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .timer-warning {
+            color: #dc2626;
+        }
+
+        .game-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .word-display {
+            font-size: 48px;
+            font-weight: 700;
+            padding: 20px 40px;
+            border-radius: 12px;
+            background: #f9fafb;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .color-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .color-btn {
+            padding: 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .color-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .color-btn:active {
+            transform: scale(0.98);
+        }
+
+        .settings-panel {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: none;
+        }
+
+        .settings-panel.active {
+            display: block;
+        }
+
+        .setting-group {
+            margin-bottom: 16px;
+        }
+
+        .setting-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .setting-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .setting-info {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .modal-message {
+            font-size: 16px;
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .modal-buttons .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .integration-status {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: #166534;
+            display: none;
+        }
+
+        .integration-status.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            transition: width 0.3s;
+        }
+
+        @media (max-width: 640px) {
+            .game-container {
+                padding: 20px;
+            }
+
+            .game-title {
+                font-size: 24px;
+            }
+
+            .stat-card {
+                min-width: 80px;
+            }
+
+            .word-display {
+                font-size: 36px;
+                padding: 16px 24px;
+            }
+
+            .color-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 集成状态提示 -->
+        <div id="integrationStatus" class="integration-status">
+            Micro-app 集成已启用
+        </div>
+
+        <!-- 游戏标题 -->
+        <div class="game-header">
+            <h1 class="game-title">干扰词辨识游戏</h1>
+            <p class="game-subtitle">根据文字的实际颜色选择，而非文字本身的意思</p>
+        </div>
+
+        <!-- 游戏统计 -->
+        <div class="game-stats">
+            <div class="stat-card">
+                <span class="stat-label">剩余时间</span>
+                <span class="stat-value" id="timeDisplay">60</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">正确次数</span>
+                <span class="stat-value" id="correctDisplay">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">错误次数</span>
+                <span class="stat-value" id="incorrectDisplay">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">准确率</span>
+                <span class="stat-value" id="accuracyDisplay">0%</span>
+            </div>
+        </div>
+
+        <!-- 进度条 -->
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+
+        <!-- 控制按钮 -->
+        <div class="game-controls">
+            <button class="btn btn-primary" id="startBtn">开始游戏</button>
+            <button class="btn btn-secondary" id="resetBtn">重新开始</button>
+            <button class="btn btn-secondary" id="settingsBtn">设置</button>
+        </div>
+
+        <!-- 游戏区域 -->
+        <div class="game-area">
+            <div class="word-display" id="wordDisplay">按“开始游戏”按钮开始游戏</div>
+            <div class="color-options" id="colorOptions">
+                <!-- 颜色选项将通过JS动态生成 -->
+            </div>
+        </div>
+
+        <!-- 设置面板 -->
+        <div class="settings-panel" id="settingsPanel">
+            <h3 style="margin-bottom: 16px; color: #1f2937;">游戏设置</h3>
+            
+            <div class="setting-group">
+                <label class="setting-label">游戏时间 (秒)</label>
+                <input type="range" class="setting-input" id="timeLimitInput" min="30" max="180" step="10" value="60">
+                <span class="setting-info" id="timeLimitValue">60 秒</span>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label">词显示时间 (秒)</label>
+                <input type="range" class="setting-input" id="wordDurationInput" min="1" max="5" step="0.5" value="2">
+                <span class="setting-info" id="wordDurationValue">2.0 秒</span>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label">颜色选项数量</label>
+                <input type="range" class="setting-input" id="optionCountInput" min="2" max="6" value="4">
+                <span class="setting-info" id="optionCountValue">4 个选项</span>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label">干扰强度</label>
+                <select class="setting-input" id="difficultyInput">
+                    <option value="easy">简单 (低干扰)</option>
+                    <option value="medium" selected>中等 (标准干扰)</option>
+                    <option value="hard">困难 (高干扰)</option>
+                </select>
+                <span class="setting-info">选择干扰词的干扰强度</span>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label">语言</label>
+                <select class="setting-input" id="languageInput">
+                    <option value="zh-CN" selected>中文</option>
+                    <option value="en">英文</option>
+                </select>
+                <span class="setting-info">选择游戏语言</span>
+            </div>
+
+            <button class="btn btn-primary" id="applySettingsBtn" style="width: 100%; margin-top: 8px;">应用设置</button>
+        </div>
+
+        <!-- 结果模态框 -->
+        <div class="modal-overlay" id="modalOverlay">
+            <div class="modal">
+                <div class="modal-icon" id="modalIcon">🎉</div>
+                <h2 class="modal-title" id="modalTitle">游戏结束!</h2>
+                <p class="modal-message" id="modalMessage">你的准确率是 75%</p>
+                <div class="modal-buttons">
+                    <button class="btn btn-primary" id="playAgainBtn">再玩一次</button>
+                    <button class="btn btn-secondary" id="endGameBtn">结束游戏</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏配置（可干预参数）
+        let gameConfig = {
+            timeLimit: 60,           // 游戏时间限制 (30-180秒)
+            wordDuration: 2000,      // 词显示时间 (1000-5000ms)
+            optionCount: 4,          // 颜色选项数量 (2-6)
+            difficulty: 'medium',    // 干扰强度 (easy, medium, hard)
+            language: 'zh-CN'        // 语言 (zh-CN, en)
+        };
+
+        // 游戏状态
+        let gameState = {
+            status: 'idle', // idle, playing, ended
+            currentWord: '',
+            currentColor: '',
+            correctAnswers: 0,
+            incorrectAnswers: 0,
+            timeRemaining: 60,
+            timerInterval: null,
+            wordInterval: null,
+            totalWords: 0,
+            progress: 0
+        };
+
+        // 颜色和词库
+        const colors = {
+            red: '#ef4444',
+            blue: '#3b82f6',
+            green: '#10b981',
+            yellow: '#f59e0b',
+            purple: '#8b5cf6',
+            orange: '#f97316'
+        };
+
+        const colorNames = {
+            'zh-CN': {
+                red: '红色',
+                blue: '蓝色',
+                green: '绿色',
+                yellow: '黄色',
+                purple: '紫色',
+                orange: '橙色'
+            },
+            'en': {
+                red: 'RED',
+                blue: 'BLUE',
+                green: 'GREEN',
+                yellow: 'YELLOW',
+                purple: 'PURPLE',
+                orange: 'ORANGE'
+            }
+        };
+
+        // 干扰词库
+        const interferenceWords = {
+            'zh-CN': {
+                easy: ['苹果', '天空', '草地', '太阳', '海洋', '火焰', '森林', '雪花'],
+                medium: ['红色', '蓝色', '绿色', '黄色', '紫色', '橙色'],
+                hard: ['赤色', '蔚蓝', '碧绿', '金黄', '紫罗兰', '橙黄']
+            },
+            'en': {
+                easy: ['APPLE', 'SKY', 'GRASS', 'SUN', 'OCEAN', 'FIRE', 'FOREST', 'SNOW'],
+                medium: ['RED', 'BLUE', 'GREEN', 'YELLOW', 'PURPLE', 'ORANGE'],
+                hard: ['CRIMSON', 'AZURE', 'EMERALD', 'GOLDEN', 'VIOLET', 'AMBER']
+            }
+        };
+
+        // DOM 元素
+        const elements = {
+            timeDisplay: document.getElementById('timeDisplay'),
+            correctDisplay: document.getElementById('correctDisplay'),
+            incorrectDisplay: document.getElementById('incorrectDisplay'),
+            accuracyDisplay: document.getElementById('accuracyDisplay'),
+            wordDisplay: document.getElementById('wordDisplay'),
+            colorOptions: document.getElementById('colorOptions'),
+            startBtn: document.getElementById('startBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            settingsBtn: document.getElementById('settingsBtn'),
+            settingsPanel: document.getElementById('settingsPanel'),
+            applySettingsBtn: document.getElementById('applySettingsBtn'),
+            modalOverlay: document.getElementById('modalOverlay'),
+            modalIcon: document.getElementById('modalIcon'),
+            modalTitle: document.getElementById('modalTitle'),
+            modalMessage: document.getElementById('modalMessage'),
+            playAgainBtn: document.getElementById('playAgainBtn'),
+            endGameBtn: document.getElementById('endGameBtn'),
+            integrationStatus: document.getElementById('integrationStatus'),
+            progressFill: document.getElementById('progressFill'),
+            timeLimitInput: document.getElementById('timeLimitInput'),
+            timeLimitValue: document.getElementById('timeLimitValue'),
+            wordDurationInput: document.getElementById('wordDurationInput'),
+            wordDurationValue: document.getElementById('wordDurationValue'),
+            optionCountInput: document.getElementById('optionCountInput'),
+            optionCountValue: document.getElementById('optionCountValue'),
+            difficultyInput: document.getElementById('difficultyInput'),
+            languageInput: document.getElementById('languageInput')
+        };
+
+        // 初始化游戏
+        function initGame() {
+            updateSettingsDisplay();
+            renderColorOptions();
+            updateUI();
+            setupEventListeners();
+            setupMicroAppIntegration();
+        }
+
+        // 渲染颜色选项
+        function renderColorOptions() {
+            elements.colorOptions.innerHTML = '';
+            const colorKeys = Object.keys(colors);
+            const selectedColors = colorKeys.slice(0, gameConfig.optionCount);
+            
+            selectedColors.forEach(color => {
+                const button = document.createElement('button');
+                button.className = 'color-btn';
+                button.style.background = colors[color];
+                button.textContent = colorNames[gameConfig.language][color];
+                button.dataset.color = color;
+                button.addEventListener('click', () => handleColorSelection(color));
+                elements.colorOptions.appendChild(button);
+            });
+        }
+
+        // 处理颜色选择
+        function handleColorSelection(selectedColor) {
+            if (gameState.status !== 'playing') return;
+            
+            if (selectedColor === gameState.currentColor) {
+                // 正确选择
+                gameState.correctAnswers++;
+                elements.wordDisplay.style.boxShadow = '0 0 20px #10b981';
+                setTimeout(() => {
+                    elements.wordDisplay.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                }, 300);
+            } else {
+                // 错误选择
+                gameState.incorrectAnswers++;
+                elements.wordDisplay.style.boxShadow = '0 0 20px #ef4444';
+                setTimeout(() => {
+                    elements.wordDisplay.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+                }, 300);
+            }
+            
+            gameState.totalWords++;
+            gameState.progress = (gameState.totalWords / 30) * 100;
+            elements.progressFill.style.width = `${gameState.progress}%`;
+            
+            updateUI();
+            sendStateToMicroApp();
+            generateNewWord();
+        }
+
+        // 生成新词
+        function generateNewWord() {
+            const colorKeys = Object.keys(colors);
+            const selectedColors = colorKeys.slice(0, gameConfig.optionCount);
+            
+            // 随机选择实际颜色
+            const actualColor = selectedColors[Math.floor(Math.random() * selectedColors.length)];
+            
+            // 根据难度选择干扰词
+            let wordPool = interferenceWords[gameConfig.language][gameConfig.difficulty];
+            
+            // 确保干扰词与实际颜色不同
+            let word;
+            do {
+                word = wordPool[Math.floor(Math.random() * wordPool.length)];
+            } while (word === colorNames[gameConfig.language][actualColor] && gameConfig.difficulty !== 'easy');
+            
+            gameState.currentWord = word;
+            gameState.currentColor = actualColor;
+            
+            // 显示词
+            elements.wordDisplay.textContent = word;
+            elements.wordDisplay.style.color = colors[actualColor];
+            
+            // 设置超时自动切换
+            clearTimeout(gameState.wordInterval);
+            gameState.wordInterval = setTimeout(() => {
+                if (gameState.status === 'playing') {
+                    gameState.incorrectAnswers++;
+                    gameState.totalWords++;
+                    gameState.progress = (gameState.totalWords / 30) * 100;
+                    elements.progressFill.style.width = `${gameState.progress}%`;
+                    updateUI();
+                    sendStateToMicroApp();
+                    generateNewWord();
+                }
+            }, gameConfig.wordDuration);
+        }
+
+        // 开始游戏
+        function startGame() {
+            gameState.status = 'playing';
+            gameState.correctAnswers = 0;
+            gameState.incorrectAnswers = 0;
+            gameState.timeRemaining = gameConfig.timeLimit;
+            gameState.totalWords = 0;
+            gameState.progress = 0;
+            
+            updateUI();
+            startTimer();
+            generateNewWord();
+            sendStateToMicroApp();
+            
+            elements.startBtn.textContent = '游戏进行中';
+            elements.startBtn.disabled = true;
+            elements.progressFill.style.width = '0%';
+        }
+
+        // 重置游戏
+        function resetGame() {
+            stopTimer();
+            clearTimeout(gameState.wordInterval);
+            gameState.status = 'idle';
+            gameState.correctAnswers = 0;
+            gameState.incorrectAnswers = 0;
+            gameState.timeRemaining = gameConfig.timeLimit;
+            gameState.totalWords = 0;
+            gameState.progress = 0;
+            
+            elements.wordDisplay.textContent = '准备开始';
+            elements.wordDisplay.style.color = '#1f2937';
+            elements.wordDisplay.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+            updateUI();
+            sendStateToMicroApp();
+            
+            elements.startBtn.textContent = '开始游戏';
+            elements.startBtn.disabled = false;
+            elements.modalOverlay.classList.remove('active');
+            elements.progressFill.style.width = '0%';
+        }
+
+        // 计时器
+        function startTimer() {
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            
+            gameState.timerInterval = setInterval(() => {
+                gameState.timeRemaining--;
+                updateUI();
+                sendStateToMicroApp();
+                
+                if (gameState.timeRemaining <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+                gameState.timerInterval = null;
+            }
+        }
+
+        // 结束游戏
+        function endGame() {
+            stopTimer();
+            clearTimeout(gameState.wordInterval);
+            gameState.status = 'ended';
+            sendStateToMicroApp();
+            
+            const accuracy = gameState.totalWords > 0 
+                ? Math.round((gameState.correctAnswers / gameState.totalWords) * 100) 
+                : 0;
+            
+            elements.modalIcon.textContent = accuracy >= 70 ? '🎉' : '😔';
+            elements.modalTitle.textContent = accuracy >= 70 ? '恭喜完成!' : '再接再厉!';
+            elements.modalMessage.textContent = `你的准确率是 ${accuracy}%，正确 ${gameState.correctAnswers} 次，错误 ${gameState.incorrectAnswers} 次`;
+            elements.modalOverlay.classList.add('active');
+        }
+
+        // 更新UI
+        function updateUI() {
+            elements.timeDisplay.textContent = gameState.timeRemaining;
+            elements.correctDisplay.textContent = gameState.correctAnswers;
+            elements.incorrectDisplay.textContent = gameState.incorrectAnswers;
+            
+            const accuracy = gameState.totalWords > 0 
+                ? Math.round((gameState.correctAnswers / gameState.totalWords) * 100) 
+                : 0;
+            elements.accuracyDisplay.textContent = `${accuracy}%`;
+            
+            if (gameState.timeRemaining <= 10) {
+                elements.timeDisplay.classList.add('timer-warning');
+            } else {
+                elements.timeDisplay.classList.remove('timer-warning');
+            }
+        }
+
+        // 更新设置显示
+        function updateSettingsDisplay() {
+            elements.timeLimitInput.value = gameConfig.timeLimit;
+            elements.timeLimitValue.textContent = `${gameConfig.timeLimit} 秒`;
+            
+            elements.wordDurationInput.value = gameConfig.wordDuration / 1000;
+            elements.wordDurationValue.textContent = `${(gameConfig.wordDuration / 1000).toFixed(1)} 秒`;
+            
+            elements.optionCountInput.value = gameConfig.optionCount;
+            elements.optionCountValue.textContent = `${gameConfig.optionCount} 个选项`;
+            
+            elements.difficultyInput.value = gameConfig.difficulty;
+            elements.languageInput.value = gameConfig.language;
+        }
+
+        // 事件监听
+        function setupEventListeners() {
+            elements.startBtn.addEventListener('click', startGame);
+            elements.resetBtn.addEventListener('click', resetGame);
+            elements.playAgainBtn.addEventListener('click', resetGame);
+            
+            elements.endGameBtn.addEventListener('click', () => {
+                elements.modalOverlay.classList.remove('active');
+                resetGame();
+            });
+            
+            elements.settingsBtn.addEventListener('click', () => {
+                elements.settingsPanel.classList.toggle('active');
+            });
+            
+            elements.timeLimitInput.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                elements.timeLimitValue.textContent = `${value} 秒`;
+            });
+            
+            elements.wordDurationInput.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                elements.wordDurationValue.textContent = `${value.toFixed(1)} 秒`;
+            });
+            
+            elements.optionCountInput.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                elements.optionCountValue.textContent = `${value} 个选项`;
+            });
+            
+            elements.applySettingsBtn.addEventListener('click', () => {
+                gameConfig.timeLimit = parseInt(elements.timeLimitInput.value);
+                gameConfig.wordDuration = parseFloat(elements.wordDurationInput.value) * 1000;
+                gameConfig.optionCount = parseInt(elements.optionCountInput.value);
+                gameConfig.difficulty = elements.difficultyInput.value;
+                gameConfig.language = elements.languageInput.value;
+                
+                elements.settingsPanel.classList.remove('active');
+                renderColorOptions();
+                resetGame();
+            });
+        }
+
+        // Micro-app 集成
+        function setupMicroAppIntegration() {
+            // 检测是否在 micro-app 环境中
+            if (window.microApp || window.__MICRO_APP_ENVIRONMENT__) {
+                elements.integrationStatus.classList.add('active');
+                console.log('[v0] Micro-app integration enabled');
+                
+                // 监听来自主应用的数据
+                window.addEventListener('datachange', (e) => {
+                    const data = e.detail.data;
+                    console.log('[v0] Received data from main app:', data);
+                    
+                    if (data.gameConfig) {
+                        // 更新游戏配置
+                        Object.assign(gameConfig, data.gameConfig);
+                        updateSettingsDisplay();
+                        renderColorOptions();
+                        resetGame();
+                    }
+                    
+                    if (data.command === 'start') {
+                        startGame();
+                    } else if (data.command === 'reset') {
+                        resetGame();
+                    }
+                });
+                
+                // 发送初始状态
+                sendStateToMicroApp();
+            }
+        }
+
+        // 向 micro-app 主应用发送状态
+        function sendStateToMicroApp() {
+            if (window.microApp) {
+                const stateData = {
+                    status: gameState.status,
+                    correctAnswers: gameState.correctAnswers,
+                    incorrectAnswers: gameState.incorrectAnswers,
+                    totalWords: gameState.totalWords,
+                    timeRemaining: gameState.timeRemaining,
+                    accuracy: gameState.totalWords > 0 
+                        ? Math.round((gameState.correctAnswers / gameState.totalWords) * 100) 
+                        : 0,
+                    config: gameConfig
+                };
+                
+                window.microApp.dispatch(stateData);
+                console.log('[v0] Sent state to main app:', stateData);
+            }
+        }
+
+        // 初始化
+        initGame();
+    </script>
+</body>
+</html>

@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>颜色匹配大师</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+            max-width: 1000px;
+            width: 100%;
+            max-height: 98vh;
+            overflow-y: auto;
+        }
+        .game-header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        .game-title {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+        .stats-panel {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 12px;
+        }
+        .stat-box {
+            text-align: center;
+            background: white;
+            padding: 8px 5px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .stat-label {
+            font-size: 11px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+        .target-color-section {
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 2px solid #e0e0e0;
+        }
+        .target-label {
+            font-size: 16px;
+            color: #555;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .target-color-display {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto;
+            border-radius: 15px;
+            border: 4px solid white;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .target-color-display::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+        .color-grid {
+            display: grid;
+            gap: 8px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            margin-bottom: 15px;
+        }
+        .color-grid.grid-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        .color-grid.grid-5 {
+            grid-template-columns: repeat(5, 1fr);
+        }
+        .color-grid.grid-6 {
+            grid-template-columns: repeat(6, 1fr);
+        }
+        .color-grid.grid-7 {
+            grid-template-columns: repeat(7, 1fr);
+        }
+        .color-block {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 3px solid transparent;
+            position: relative;
+            overflow: hidden;
+            min-height: 50px;
+        }
+        .color-block:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        .color-block.correct {
+            animation: correctPulse 0.5s;
+            border-color: #4caf50;
+        }
+        .color-block.wrong {
+            animation: wrongShake 0.4s;
+            border-color: #f44336;
+        }
+        @keyframes correctPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); box-shadow: 0 0 25px #4caf50; }
+            100% { transform: scale(1); }
+        }
+        @keyframes wrongShake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+        .timer-bar {
+            width: 100%;
+            height: 15px;
+            background: #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .timer-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            transition: width 0.1s linear;
+            border-radius: 8px;
+        }
+        .timer-fill.warning {
+            background: linear-gradient(90deg, #ff9800, #ffc107);
+        }
+        .timer-fill.danger {
+            background: linear-gradient(90deg, #f44336, #ff5722);
+        }
+        .control-section {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+        }
+        .btn {
+            padding: 12px 28px;
+            font-size: 16px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px rgba(118, 75, 162, 0.4);
+        }
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+        .config-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .config-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .config-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .config-input {
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .config-select {
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+        .result-screen {
+            text-align: center;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 20px;
+        }
+        .result-title {
+            font-size: 36px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .result-score {
+            font-size: 56px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 25px;
+        }
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .result-stat {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .combo-display {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #ff6b6b, #feca57);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            animation: comboPulse 0.5s infinite;
+            display: none;
+            z-index: 1000;
+        }
+        .combo-display.active {
+            display: block;
+        }
+        @keyframes comboPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef } = React;
+
+        const ColorMatchMaster = () => {
+            // 颜色池
+            const COLOR_POOL = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57',
+                '#FF9FF3', '#54A0FF', '#48DBFB', '#00D2D3', '#5F27CD',
+                '#EE5A24', '#F8B500', '#00B894', '#FD79A8', '#A29BFE',
+                '#6C5CE7', '#FDA7DF', '#0984E3', '#81ECEC', '#55EFC4'
+            ];
+
+            // 游戏配置
+            const [config, setConfig] = useState({
+                duration_seconds: 60,
+                difficulty: 'medium', // easy, medium, hard
+                grid_size: 25, // 16, 25, 36, 49
+                color_similarity: 0.3,
+                time_per_round: 5000,
+                bonus_time: 1000,
+                penalty_time: 500,
+                combo_multiplier: true,
+                speed_increase: true
+            });
+
+            // 游戏状态
+            const [gameState, setGameState] = useState('config');
+            const [score, setScore] = useState(0);
+            const [level, setLevel] = useState(1);
+            const [combo, setCombo] = useState(0);
+            const [maxCombo, setMaxCombo] = useState(0);
+            const [timeLeft, setTimeLeft] = useState(config.time_per_round);
+            const [totalTime, setTotalTime] = useState(config.duration_seconds);
+            const [targetColor, setTargetColor] = useState('');
+            const [colorBlocks, setColorBlocks] = useState([]);
+            const [correctCount, setCorrectCount] = useState(0);
+            const [wrongCount, setWrongCount] = useState(0);
+            const [selectedBlock, setSelectedBlock] = useState(null);
+            const [clickFeedback, setClickFeedback] = useState({});
+
+            const timerRef = useRef(null);
+            const roundTimerRef = useRef(null);
+
+            // 根据难度调整参数
+            useEffect(() => {
+                let gridSize, similarity;
+                switch (config.difficulty) {
+                    case 'easy':
+                        gridSize = 16; // 4x4
+                        similarity = 0.5;
+                        break;
+                    case 'hard':
+                        gridSize = 36; // 6x6
+                        similarity = 0.1;
+                        break;
+                    default:
+                        gridSize = 25; // 5x5
+                        similarity = 0.3;
+                }
+                setConfig(prev => ({ ...prev, grid_size: gridSize, color_similarity: similarity }));
+            }, [config.difficulty]);
+
+            // 生成相似颜色
+            const generateSimilarColor = (baseColor, similarity) => {
+                const r = parseInt(baseColor.slice(1, 3), 16);
+                const g = parseInt(baseColor.slice(3, 5), 16);
+                const b = parseInt(baseColor.slice(5, 7), 16);
+                
+                const variance = Math.floor(255 * similarity);
+                const newR = Math.max(0, Math.min(255, r + (Math.random() - 0.5) * variance));
+                const newG = Math.max(0, Math.min(255, g + (Math.random() - 0.5) * variance));
+                const newB = Math.max(0, Math.min(255, b + (Math.random() - 0.5) * variance));
+                
+                const toHex = (n) => Math.floor(n).toString(16).padStart(2, '0');
+                return `#${toHex(newR)}${toHex(newG)}${toHex(newB)}`;
+            };
+
+            // 生成颜色块
+            const generateColorBlocks = useCallback(() => {
+                const target = COLOR_POOL[Math.floor(Math.random() * COLOR_POOL.length)];
+                setTargetColor(target);
+                
+                const blocks = [];
+                const correctCount = Math.max(1, Math.floor(config.grid_size * 0.3));
+                
+                for (let i = 0; i < correctCount; i++) {
+                    blocks.push({
+                        id: i,
+                        color: target,
+                        isCorrect: true
+                    });
+                }
+                
+                for (let i = correctCount; i < config.grid_size; i++) {
+                    const baseColor = COLOR_POOL[Math.floor(Math.random() * COLOR_POOL.length)];
+                    blocks.push({
+                        id: i,
+                        color: generateSimilarColor(baseColor, config.color_similarity),
+                        isCorrect: false
+                    });
+                }
+                
+                blocks.sort(() => Math.random() - 0.5);
+                setColorBlocks(blocks);
+            }, [config.grid_size, config.color_similarity]);
+
+            // 开始游戏
+            const startGame = () => {
+                setGameState('playing');
+                setScore(0);
+                setLevel(1);
+                setCombo(0);
+                setMaxCombo(0);
+                setCorrectCount(0);
+                setWrongCount(0);
+                setTotalTime(config.duration_seconds);
+                setTimeLeft(config.time_per_round);
+                generateColorBlocks();
+                startTimers();
+            };
+
+            // 启动计时器
+            const startTimers = () => {
+                timerRef.current = setInterval(() => {
+                    setTotalTime(prev => {
+                        if (prev <= 1) {
+                            endGame();
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+
+                roundTimerRef.current = setInterval(() => {
+                    setTimeLeft(prev => {
+                        if (prev <= 100) {
+                            nextRound();
+                            return config.time_per_round;
+                        }
+                        return prev - 100;
+                    });
+                }, 100);
+            };
+
+            // 处理颜色块点击
+            const handleBlockClick = (block) => {
+                if (gameState !== 'playing') return;
+                
+                setSelectedBlock(block.id);
+                
+                if (block.isCorrect) {
+                    const comboBonus = config.combo_multiplier ? combo : 0;
+                    const scoreGain = (10 + comboBonus) * level;
+                    setScore(score + scoreGain);
+                    setCorrectCount(correctCount + 1);
+                    setCombo(combo + 1);
+                    setMaxCombo(Math.max(maxCombo, combo + 1));
+                    
+                    setTimeLeft(prev => Math.min(config.time_per_round, prev + config.bonus_time));
+                    
+                    setClickFeedback({ [block.id]: 'correct' });
+                    
+                    setTimeout(() => {
+                        setColorBlocks(prev => prev.filter(b => b.id !== block.id));
+                        setClickFeedback({});
+                        
+                        const remainingCorrect = colorBlocks.filter(b => b.isCorrect && b.id !== block.id);
+                        if (remainingCorrect.length === 0) {
+                            nextRound();
+                        }
+                    }, 300);
+                } else {
+                    setWrongCount(wrongCount + 1);
+                    setCombo(0);
+                    
+                    setTimeLeft(prev => Math.max(0, prev - config.penalty_time));
+                    
+                    setClickFeedback({ [block.id]: 'wrong' });
+                    setTimeout(() => {
+                        setClickFeedback({});
+                    }, 300);
+                }
+            };
+
+            // 下一回合
+            const nextRound = () => {
+                setLevel(level + 1);
+                setTimeLeft(config.time_per_round);
+                generateColorBlocks();
+                
+                if (config.speed_increase && level % 5 === 0) {
+                    setConfig(prev => ({
+                        ...prev,
+                        time_per_round: Math.max(2000, prev.time_per_round - 200)
+                    }));
+                }
+            };
+
+            // 结束游戏
+            const endGame = () => {
+                setGameState('result');
+                clearInterval(timerRef.current);
+                clearInterval(roundTimerRef.current);
+            };
+
+            // 重置游戏
+            const resetGame = () => {
+                setGameState('config');
+                clearInterval(timerRef.current);
+                clearInterval(roundTimerRef.current);
+                setScore(0);
+                setLevel(1);
+                setCombo(0);
+                setMaxCombo(0);
+                setCorrectCount(0);
+                setWrongCount(0);
+            };
+
+            // 更新配置
+            const updateConfig = (key, value) => {
+                setConfig(prev => ({
+                    ...prev,
+                    [key]: value
+                }));
+            };
+
+            // 清理计时器
+            useEffect(() => {
+                return () => {
+                    clearInterval(timerRef.current);
+                    clearInterval(roundTimerRef.current);
+                };
+            }, []);
+
+            // micro-APP接口
+            useEffect(() => {
+                if (window.microApp) {
+                    window.microApp.addDataListener((data) => {
+                        if (data.config) {
+                            setConfig(prev => ({
+                                ...prev,
+                                ...data.config
+                            }));
+                        }
+                    });
+                    
+                    window.microApp.dispatch({
+                        type: 'game-ready',
+                        data: { name: 'color-match-master' }
+                    });
+                }
+            }, []);
+
+            // 计算准确率
+            const accuracy = (correctCount + wrongCount) > 0 
+                ? Math.round((correctCount / (correctCount + wrongCount)) * 100) 
+                : 0;
+
+            // 计算时间条颜色
+            const getTimerClass = () => {
+                const percentage = (timeLeft / config.time_per_round) * 100;
+                if (percentage < 20) return 'danger';
+                if (percentage < 50) return 'warning';
+                return '';
+            };
+
+            // 获取网格类名
+            const getGridClass = () => {
+                const cols = Math.sqrt(config.grid_size);
+                return `grid-${Math.round(cols)}`;
+            };
+
+            return (
+                <div className="game-container">
+                    <div className="game-header">
+                        <h1 className="game-title">🎨 颜色匹配大师</h1>
+                    </div>
+
+                    {gameState === 'config' && (
+                        <>
+                            <div className="config-panel">
+                                <h3 style={{marginBottom: '15px', textAlign: 'center'}}>游戏设置</h3>
+                                <div className="config-grid">
+                                    <div className="config-item">
+                                        <label className="config-label">游戏时长（秒）:</label>
+                                        <input
+                                            type="number"
+                                            className="config-input"
+                                            value={config.duration_seconds}
+                                            onChange={(e) => updateConfig('duration_seconds', parseInt(e.target.value))}
+                                            min="30"
+                                            max="300"
+                                        />
+                                    </div>
+                                    <div className="config-item">
+                                        <label className="config-label">难度等级:</label>
+                                        <select
+                                            className="config-select"
+                                            value={config.difficulty}
+                                            onChange={(e) => updateConfig('difficulty', e.target.value)}
+                                        >
+                                            <option value="easy">简单 (4x4)</option>
+                                            <option value="medium">中等 (5x5)</option>
+                                            <option value="hard">困难 (6x6)</option>
+                                        </select>
+                                    </div>
+                                    <div className="config-item">
+                                        <label className="config-label">每回合时间（毫秒）:</label>
+                                        <input
+                                            type="number"
+                                            className="config-input"
+                                            value={config.time_per_round}
+                                            onChange={(e) => updateConfig('time_per_round', parseInt(e.target.value))}
+                                            min="2000"
+                                            max="10000"
+                                        />
+                                    </div>
+                                    <div className="config-item">
+                                        <label className="config-label">奖励时间（毫秒）:</label>
+                                        <input
+                                            type="number"
+                                            className="config-input"
+                                            value={config.bonus_time}
+                                            onChange={(e) => updateConfig('bonus_time', parseInt(e.target.value))}
+                                            min="0"
+                                            max="2000"
+                                        />
+                                    </div>
+                                    <div className="config-item">
+                                        <label className="config-label">惩罚时间（毫秒）:</label>
+                                        <input
+                                            type="number"
+                                            className="config-input"
+                                            value={config.penalty_time}
+                                            onChange={(e) => updateConfig('penalty_time', parseInt(e.target.value))}
+                                            min="0"
+                                            max="2000"
+                                        />
+                                    </div>
+                                    <div className="config-item">
+                                        <label className="config-label">连击加分:</label>
+                                        <select
+                                            className="config-select"
+                                            value={config.combo_multiplier}
+                                            onChange={(e) => updateConfig('combo_multiplier', e.target.value === 'true')}
+                                        >
+                                            <option value="true">启用</option>
+                                            <option value="false">禁用</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="control-section">
+                                <button className="btn btn-primary" onClick={startGame}>
+                                    开始游戏
+                                </button>
+                            </div>
+                        </>
+                    )}
+
+                    {gameState === 'playing' && (
+                        <>
+                            <div className="stats-panel">
+                                <div className="stat-box">
+                                    <div className="stat-label">得分</div>
+                                    <div className="stat-value">{score}</div>
+                                </div>
+                                <div className="stat-box">
+                                    <div className="stat-label">关卡</div>
+                                    <div className="stat-value">{level}</div>
+                                </div>
+                                <div className="stat-box">
+                                    <div className="stat-label">连击</div>
+                                    <div className="stat-value">{combo}</div>
+                                </div>
+                                <div className="stat-box">
+                                    <div className="stat-label">准确率</div>
+                                    <div className="stat-value">{accuracy}%</div>
+                                </div>
+                                <div className="stat-box">
+                                    <div className="stat-label">总时间</div>
+                                    <div className="stat-value">{totalTime}s</div>
+                                </div>
+                            </div>
+
+                            {combo >= 5 && (
+                                <div className="combo-display active">
+                                    连击 x{combo}! 🔥
+                                </div>
+                            )}
+
+                            <div className="timer-bar">
+                                <div 
+                                    className={`timer-fill ${getTimerClass()}`}
+                                    style={{width: `${(timeLeft / config.time_per_round) * 100}%`}}
+                                ></div>
+                            </div>
+
+                            <div className="target-color-section">
+                                <div className="target-label">找出这个颜色</div>
+                                <div 
+                                    className="target-color-display"
+                                    style={{backgroundColor: targetColor}}
+                                ></div>
+                            </div>
+
+                            <div className={`color-grid ${getGridClass()}`}>
+                                {colorBlocks.map(block => (
+                                    <div
+                                        key={block.id}
+                                        className={`color-block ${clickFeedback[block.id] || ''}`}
+                                        style={{backgroundColor: block.color}}
+                                        onClick={() => handleBlockClick(block)}
+                                    ></div>
+                                ))}
+                            </div>
+                        </>
+                    )}
+
+                    {gameState === 'result' && (
+                        <div className="result-screen">
+                            <h2 className="result-title">🎉 游戏结束！</h2>
+                            <div className="result-score">{score}</div>
+                            <div className="result-stats">
+                                <div className="result-stat">
+                                    <div className="stat-label">最高连击</div>
+                                    <div className="stat-value">{maxCombo}</div>
+                                </div>
+                                <div className="result-stat">
+                                    <div className="stat-label">达到关卡</div>
+                                    <div className="stat-value">{level}</div>
+                                </div>
+                                <div className="result-stat">
+                                    <div className="stat-label">准确率</div>
+                                    <div className="stat-value">{accuracy}%</div>
+                                </div>
+                                <div className="result-stat">
+                                    <div className="stat-label">正确次数</div>
+                                    <div className="stat-value">{correctCount}</div>
+                                </div>
+                            </div>
+                            <div className="control-section">
+                                <button className="btn btn-primary" onClick={resetGame}>
+                                    再次挑战
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<ColorMatchMaster />, document.getElementById('root'));
+    </script>
+</body>
+</html>

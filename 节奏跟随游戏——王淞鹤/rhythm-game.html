@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>节奏跟随 — 脉冲圆球豪华版</title>
+<style>
+  :root{
+    --bg1:#eef3ff;
+    --bg2:#dbe8ff;
+    --card:#ffffffcc;
+    --accent:#6c5ce7;
+    --good:#22c55e;
+    --perfect:#06b6d4;
+    --miss:#ef4444;
+  }
+  html,body{
+    height:100%; margin:0;
+    font-family:-apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI";
+    background:linear-gradient(180deg,var(--bg1),var(--bg2));
+    -webkit-tap-highlight-color:transparent;
+  }
+  .wrap{
+    max-width:460px;
+    margin:0 auto;
+    padding:14px;
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    min-height:100vh;
+    box-sizing:border-box;
+  }
+  header{
+    width:100%;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+  }
+  h1{margin:0;font-size:18px;color:#243b55;}
+
+  .info{
+    background:var(--card);
+    padding:10px 12px;
+    border-radius:12px;
+    box-shadow:0 8px 20px rgba(12,18,45,0.06);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:14px;
+  }
+
+  #beatArea{
+    width:100%; max-width:420px;
+    height:520px;
+    background:linear-gradient(180deg,#ffffffd9,#fbfdff);
+    border-radius:20px;
+    box-shadow:inset 0 6px 20px rgba(20,28,60,0.05);
+    position:relative;
+    overflow:hidden;
+  }
+
+  .pulse{
+    position:absolute;
+    left:50%; top:38%;
+    transform:translate(-50%,-50%);
+    width:200px; height:200px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 28%, #b3e7ff, #79c2ff 45%, #4aa3ff 70%);
+    box-shadow:
+      0 18px 50px rgba(74,163,255,0.22),
+      inset 0 -8px 25px rgba(0,0,0,0.06);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition:transform .12s ease;
+    cursor:pointer;
+  }
+
+  .pulse.pulseAnim{
+    transform:translate(-50%,-50%) scale(1.2);
+    box-shadow:0 22px 60px rgba(74,163,255,0.32);
+  }
+
+  .pulseLabel{
+    font-size:20px;
+    font-weight:700;
+    color:#073362;
+    pointer-events:none;
+  }
+
+  #countdown{
+    position:absolute;
+    z-index:99;
+    top:50%; left:50%;
+    transform:translate(-50%,-50%);
+    font-size:70px;
+    font-weight:900;
+    color:#6c5ce7;
+    text-shadow:0 6px 20px rgba(0,0,0,0.15);
+    display:none;
+    animation:pop 0.45s ease;
+  }
+  @keyframes pop {
+    0%{transform:translate(-50%,-50%) scale(0.4); opacity:0;}
+    50%{transform:translate(-50%,-50%) scale(1.25); opacity:1;}
+    100%{transform:translate(-50%,-50%) scale(1); opacity:1;}
+  }
+
+  #judgeText{
+    position:absolute;
+    top:65%;
+    width:100%;
+    text-align:center;
+    font-size:22px;
+    font-weight:700;
+  }
+
+  .hud{
+    position:absolute;
+    bottom:20px;
+    width:100%;
+    display:flex;
+    justify-content:center;
+    pointer-events:none;
+  }
+  .combo{
+    background:rgba(255,255,255,.7);
+    padding:6px 14px;
+    border-radius:999px;
+    box-shadow:0 6px 18px rgba(9,18,48,0.06);
+    font-weight:700;
+  }
+
+  button{
+    padding:10px 14px;
+    border:0;
+    background:var(--accent);
+    border-radius:10px;
+    color:white;
+    font-weight:700;
+    box-shadow:0 6px 16px rgba(108,92,231,0.18);
+  }
+
+  button.ghost{
+    background:transparent;
+    border:2px solid rgba(108,92,231,0.15);
+    color:var(--accent);
+  }
+
+  canvas.particles{
+    position:absolute;
+    width:100%; height:100%;
+    left:0; top:0;
+    pointer-events:none;
+  }
+
+  @media(max-width:420px){
+    .pulse{width:160px;height:160px;}
+    #beatArea{height:480px;}
+  }
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <header>
+    <h1>节奏跟随 · 脉冲圆球</h1>
+    <div>
+      <button id="startBtn">开始</button>
+      <button id="pauseBtn" class="ghost">暂停</button>
+    </div>
+  </header>
+
+  <div class="info">
+    <div>
+      等级 <span id="level">1</span>
+      &nbsp; | &nbsp;
+      得分 <span id="score" style="color:var(--accent);font-weight:700">0</span>
+    </div>
+    <div>
+      Miss <span id="miss">0</span>/<span id="maxMiss">5</span>
+      &nbsp; | &nbsp;
+      时间 <span id="timer">0.0</span>s
+    </div>
+  </div>
+
+  <div id="beatArea">
+    <canvas id="particles" class="particles"></canvas>
+
+    <div id="countdown"></div>
+
+    <div id="pulse" class="pulse">
+      <div class="pulseLabel">Tap</div>
+    </div>
+
+    <div id="judgeText"></div>
+
+    <div class="hud">
+      <div id="combo" class="combo">Combo ×0</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+(() => {
+  const CONFIG = {
+    baseBpm: 60,
+    bpmIncPerLevel: 8,
+    perfectWindow: 85,
+    goodWindow: 160,
+    missWindow: 300,
+    scorePerfect: 100,
+    scoreGood: 50,
+    scoreMiss: -20,
+    maxMiss: 5,
+    levelScoreTarget: 650,
+    particleCount: 28,
+    startDelay: 900,
+    countdownNumbers:["3","2","1","Go!"]
+  };
+
+  let level = 1, score = 0, combo = 0, missCount = 0;
+  let running = false, paused = false;
+  let bpm = CONFIG.baseBpm;
+  let beatInterval = 1000;
+  let beatTimer = null;
+  let lastBeatTime = 0;
+  let pendingMissTimeout = null;
+
+  let time = 0;
+  let timeTimer = null;
+  let lastHitTime = 0;
+
+  const pulse = document.getElementById("pulse");
+  const judgeText = document.getElementById("judgeText");
+  const comboEl = document.getElementById("combo");
+  const scoreEl = document.getElementById("score");
+  const levelEl = document.getElementById("level");
+  const missEl = document.getElementById("miss");
+  const timerEl = document.getElementById("timer");
+  const countdown = document.getElementById("countdown");
+
+  const particlesCanvas = document.getElementById("particles");
+  const ctx = particlesCanvas.getContext("2d");
+  let particles = [];
+
+  function resizeCanvas(){
+    particlesCanvas.width = particlesCanvas.clientWidth;
+    particlesCanvas.height = particlesCanvas.clientHeight;
+  }
+  resizeCanvas();
+  window.addEventListener("resize",resizeCanvas);
+
+  function startCountdown(cb){
+    countdown.style.display="block";
+    countdown.textContent="";
+    let i=0;
+
+    function step(){
+      if(i>=CONFIG.countdownNumbers.length){
+        countdown.style.display="none";
+        cb();
+        return;
+      }
+      countdown.textContent = CONFIG.countdownNumbers[i];
+      countdown.style.animation="pop .45s ease";
+      i++;
+      setTimeout(step, CONFIG.startDelay);
+    }
+    step();
+  }
+
+  function triggerBeat(){
+    if(!running||paused) return;
+    lastBeatTime = performance.now();
+
+    pulse.classList.add("pulseAnim");
+    setTimeout(()=>pulse.classList.remove("pulseAnim"),140);
+
+    if(pendingMissTimeout) clearTimeout(pendingMissTimeout);
+    pendingMissTimeout = setTimeout(()=>{ if(lastHitTime <= lastBeatTime) doMiss(); }, CONFIG.missWindow);
+  }
+
+  function startBeatLoop(){
+    stopBeatLoop();
+    bpm = CONFIG.baseBpm + (level-1)*CONFIG.bpmIncPerLevel;
+    beatInterval = Math.max(100, 60000/bpm);
+    triggerBeat();
+    beatTimer = setInterval(triggerBeat, beatInterval);
+  }
+  function stopBeatLoop(){ if(beatTimer) clearInterval(beatTimer); }
+
+  function startTimer(){
+    stopTimer();
+    time = 0;
+    timeTimer = setInterval(()=>{ time+=0.1; timerEl.textContent = time.toFixed(1); },100);
+  }
+  function stopTimer(){ if(timeTimer) clearInterval(timeTimer); }
+
+  function handleHit(){
+    if(!running||paused) return;
+    const now = performance.now();
+    const delta = Math.abs(now - lastBeatTime);
+    lastHitTime = now;
+    let judge;
+    if(delta <= CONFIG.perfectWindow){ judge="Perfect"; score += Math.round(CONFIG.scorePerfect*(1+combo*0.02)); combo++; }
+    else if(delta <= CONFIG.goodWindow){ judge="Good"; score += Math.round(CONFIG.scoreGood*(1+combo*0.01)); combo++; }
+    else{ judge="Late/Early"; doMiss(); combo=0; }
+
+    updateScore();
+    showJudge(judge, delta);
+    spawnParticles(judge);
+    updateCombo();
+
+    if(score >= level*CONFIG.levelScoreTarget){ levelUp(); }
+  }
+
+  function doMiss(){
+    missCount++; missEl.textContent = missCount; combo=0; updateCombo();
+    score = Math.max(0, score + CONFIG.scoreMiss); updateScore();
+    showJudge("Miss"); showMissEffect();
+    if(missCount >= CONFIG.maxMiss){ endGame(); }
+  }
+
+  function updateScore(){ scoreEl.textContent = score; }
+  function updateCombo(){ comboEl.textContent = "Combo ×" + combo; }
+
+  function showJudge(text,delta=null){
+    judgeText.textContent = text+(delta?` (${Math.round(delta)}ms)`:"");
+    if(text==="Perfect") judgeText.style.color="var(--perfect)";
+    else if(text==="Good") judgeText.style.color="var(--good)";
+    else if(text==="Miss") judgeText.style.color="var(--miss)";
+    else judgeText.style.color="#334155";
+    setTimeout(()=>judgeText.textContent="",600);
+  }
+
+  function showMissEffect(){
+    pulse.style.background="radial-gradient(circle,#ffdede,#ffb7b7 60%)";
+    setTimeout(()=>{ pulse.style.background="radial-gradient(circle at 35% 28%, #b3e7ff, #79c2ff 45%, #4aa3ff 70%)"; },300);
+  }
+
+  function levelUp(){
+    level++; levelEl.textContent = level;
+    judgeText.textContent="LEVEL UP!"; judgeText.style.color="var(--accent)";
+    setTimeout(()=>judgeText.textContent="",900);
+    startBeatLoop();
+  }
+
+  function endGame(){ running=false; stopBeatLoop(); stopTimer(); judgeText.textContent=`游戏结束！得分 ${score}`; judgeText.style.color="var(--miss)"; }
+
+  function spawnParticles(j){
+    let color = j==="Perfect"?"#06b6d4": j==="Good"?"#22c55e":"#ff6b6b";
+    const rect = particlesCanvas.getBoundingClientRect();
+    const cx = rect.width/2;
+    const cy = rect.height*0.38;
+    for(let i=0;i<CONFIG.particleCount;i++){
+      particles.push({ x:cx, y:cy, vx:(Math.random()-0.5)*12, vy:(Math.random()-1)*10-2, life:300+Math.random()*280, born:performance.now(), size:2+Math.random()*4, color });
+    }
+  }
+
+  function updateParticles(){
+    const now = performance.now();
+    for(let i=particles.length-1;i>=0;i--){
+      let p=particles[i];
+      if(now-p.born>p.life){ particles.splice(i,1); continue; }
+      p.vy+=0.12; p.x+=p.vx; p.y+=p.vy;
+    }
+    ctx.clearRect(0,0,particlesCanvas.width,particlesCanvas.height);
+    for(const p of particles){
+      ctx.globalAlpha = 1-(performance.now()-p.born)/p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+  function particlesLoop(){ updateParticles(); requestAnimationFrame(particlesLoop); }
+  particlesLoop();
+
+  function bind(){
+    const hit = e=>{ e.preventDefault(); handleHit(); };
+    pulse.addEventListener("touchstart",hit,{passive:false});
+    pulse.addEventListener("mousedown",hit,{passive:false});
+    document.getElementById("startBtn").onclick=()=>{ resetGame(); startCountdown(startGame); };
+    document.getElementById("pauseBtn").onclick=()=>{
+      if(!running) return; paused=!paused;
+      if(paused){ stopBeatLoop(); stopTimer(); judgeText.textContent="已暂停"; }
+      else{ startBeatLoop(); startTimer(); judgeText.textContent=""; }
+    };
+  }
+
+  function resetGame(){ level=1; score=0; combo=0; missCount=0; updateScore(); updateCombo(); levelEl.textContent=1; missEl.textContent=0; judgeText.textContent=""; }
+  function startGame(){ running=true; paused=false; startTimer(); startBeatLoop(); }
+  bind();
+
+  /* ====================== micro-APP 接口 ====================== */
+  if(window.microApp){
+    window.microApp.addDataListener((data)=>{
+      if(data.config){
+        Object.assign(CONFIG, data.config);
+      }
+    });
+    window.microApp.dispatch({
+      type:'game-ready',
+      data:{name:'pulse-rhythm-game'}
+    });
+  }
+
+})();
+</script>
+</body>
+</html>

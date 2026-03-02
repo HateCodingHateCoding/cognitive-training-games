@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>记忆翻牌配对游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 32px;
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .game-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .game-subtitle {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .game-stats {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .stat-card {
+            background: #f3f4f6;
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 100px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .timer-warning {
+            color: #dc2626;
+        }
+
+        .game-controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .card {
+            aspect-ratio: 1;
+            background: #667eea;
+            border-radius: 12px;
+            cursor: pointer;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card.matched {
+            opacity: 0.6;
+            cursor: default;
+        }
+
+        .card:hover:not(.flipped):not(.matched) {
+            transform: scale(1.05);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backface-visibility: hidden;
+            font-size: 48px;
+        }
+
+        .card-front {
+            background: white;
+            transform: rotateY(180deg);
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .card-back::after {
+            content: '?';
+            font-size: 48px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .settings-panel {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: none;
+        }
+
+        .settings-panel.active {
+            display: block;
+        }
+
+        .setting-group {
+            margin-bottom: 16px;
+        }
+
+        .setting-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .setting-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .setting-info {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            text-align: center;
+            animation: modalSlideIn 0.3s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .modal-message {
+            font-size: 16px;
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .modal-buttons .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .integration-status {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 12px;
+            color: #166534;
+            display: none;
+        }
+
+        .integration-status.active {
+            display: block;
+        }
+
+        @media (max-width: 640px) {
+            .game-container {
+                padding: 20px;
+            }
+
+            .cards-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 8px;
+            }
+
+            .game-title {
+                font-size: 24px;
+            }
+
+            .stat-card {
+                min-width: 80px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 集成状态提示 -->
+        <div id="integrationStatus" class="integration-status">
+            Micro-app 集成已启用
+        </div>
+
+        <!-- 游戏标题 -->
+        <div class="game-header">
+            <h1 class="game-title">记忆翻牌配对游戏</h1>
+            <p class="game-subtitle">在限定时间内找出所有配对</p>
+        </div>
+
+        <!-- 游戏统计 -->
+        <div class="game-stats">
+            <div class="stat-card">
+                <span class="stat-label">剩余时间</span>
+                <span class="stat-value" id="timeDisplay">60</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">移动步数</span>
+                <span class="stat-value" id="movesDisplay">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">配对进度</span>
+                <span class="stat-value" id="pairsDisplay">0/8</span>
+            </div>
+        </div>
+
+        <!-- 控制按钮 -->
+        <div class="game-controls">
+            <button class="btn btn-primary" id="startBtn">开始游戏</button>
+            <button class="btn btn-secondary" id="resetBtn">重新开始</button>
+            <button class="btn btn-secondary" id="settingsBtn">设置</button>
+        </div>
+
+        <!-- 设置面板 -->
+        <div class="settings-panel" id="settingsPanel">
+            <h3 style="margin-bottom: 16px; color: #1f2937;">游戏设置</h3>
+            
+            <div class="setting-group">
+                <label class="setting-label">卡片对数 (难度)</label>
+                <input type="range" class="setting-input" id="pairCountInput" min="4" max="18" value="8">
+                <span class="setting-info" id="pairCountValue">8 对 (16 张卡片)</span>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label">时间限制 (秒)</label>
+                <input type="range" class="setting-input" id="timeLimitInput" min="30" max="180" step="10" value="60">
+                <span class="setting-info" id="timeLimitValue">60 秒</span>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label">翻牌显示时间 (秒)</label>
+                <input type="range" class="setting-input" id="flipDurationInput" min="0.5" max="3" step="0.5" value="1">
+                <span class="setting-info" id="flipDurationValue">1.0 秒</span>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label">图标主题</label>
+                <select class="setting-input" id="themeInput">
+                    <option value="emoji">表情符号</option>
+                    <option value="animals">动物</option>
+                    <option value="fruits">水果</option>
+                    <option value="numbers">数字</option>
+                </select>
+                <span class="setting-info">选择卡片图标的主题风格</span>
+            </div>
+
+            <div class="setting-group">
+                <label class="setting-label">卡片颜色</label>
+                <select class="setting-input" id="colorInput">
+                    <option value="indigo">靛蓝色 (默认)</option>
+                    <option value="purple">紫色</option>
+                    <option value="blue">蓝色</option>
+                    <option value="green">绿色</option>
+                    <option value="red">红色</option>
+                    <option value="orange">橙色</option>
+                    <option value="pink">粉色</option>
+                </select>
+                <span class="setting-info">选择卡片背面的颜色主题</span>
+            </div>
+
+            <button class="btn btn-primary" id="applySettingsBtn" style="width: 100%; margin-top: 8px;">应用设置</button>
+        </div>
+
+        <!-- 卡片网格 -->
+        <div class="cards-grid" id="cardsGrid"></div>
+
+        <!-- 结果模态框 -->
+        <div class="modal-overlay" id="modalOverlay">
+            <div class="modal">
+                <div class="modal-icon" id="modalIcon">🎉</div>
+                <h2 class="modal-title" id="modalTitle">恭喜获胜!</h2>
+                <p class="modal-message" id="modalMessage">你用 25 步完成了所有配对</p>
+                <div class="modal-buttons">
+                    <button class="btn btn-primary" id="playAgainBtn">再玩一次</button>
+                    <button class="btn btn-secondary" id="endGameBtn">结束游戏</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏配置（可干预参数）
+        let gameConfig = {
+            pairCount: 8,        // 卡片对数 (4-18)
+            timeLimit: 60,       // 时间限制 (30-180秒)
+            flipDuration: 1000,  // 翻牌显示时间 (500-3000ms)
+            showTimer: true,     // 是否显示计时器
+            theme: 'emoji',      // 图标主题 (emoji, animals, fruits, numbers)
+            themeColor: 'indigo' // 卡片颜色主题
+        };
+
+        // 游戏状态
+        let gameState = {
+            status: 'idle', // idle, playing, won, lost
+            cards: [],
+            flippedCards: [],
+            matchedPairs: 0,
+            moves: 0,
+            timeRemaining: 60,
+            timerInterval: null,
+            canFlip: true
+        };
+
+        const cardIconThemes = {
+            emoji: ['😀', '😁', '😂', '😭', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '😗', '😙', '😚'],
+            animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦'],
+            fruits: ['🍎', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍈', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🥑', '🍐', '🥔'],
+            numbers: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18']
+        };
+
+        const colorThemes = {
+            indigo: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            purple: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)',
+            blue: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+            green: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+            red: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            orange: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+            pink: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)'
+        };
+
+        // DOM 元素
+        const elements = {
+            cardsGrid: document.getElementById('cardsGrid'),
+            timeDisplay: document.getElementById('timeDisplay'),
+            movesDisplay: document.getElementById('movesDisplay'),
+            pairsDisplay: document.getElementById('pairsDisplay'),
+            startBtn: document.getElementById('startBtn'),
+            resetBtn: document.getElementById('resetBtn'),
+            settingsBtn: document.getElementById('settingsBtn'),
+            settingsPanel: document.getElementById('settingsPanel'),
+            applySettingsBtn: document.getElementById('applySettingsBtn'),
+            modalOverlay: document.getElementById('modalOverlay'),
+            modalIcon: document.getElementById('modalIcon'),
+            modalTitle: document.getElementById('modalTitle'),
+            modalMessage: document.getElementById('modalMessage'),
+            playAgainBtn: document.getElementById('playAgainBtn'),
+            endGameBtn: document.getElementById('endGameBtn'),
+            integrationStatus: document.getElementById('integrationStatus'),
+            pairCountInput: document.getElementById('pairCountInput'),
+            pairCountValue: document.getElementById('pairCountValue'),
+            timeLimitInput: document.getElementById('timeLimitInput'),
+            timeLimitValue: document.getElementById('timeLimitValue'),
+            flipDurationInput: document.getElementById('flipDurationInput'),
+            flipDurationValue: document.getElementById('flipDurationValue'),
+            themeInput: document.getElementById('themeInput'),
+            colorInput: document.getElementById('colorInput')
+        };
+
+        // 初始化游戏
+        function initGame() {
+            updateSettingsDisplay();
+            generateCards();
+            renderCards();
+            updateUI();
+            setupEventListeners();
+            setupMicroAppIntegration();
+            applyColorTheme();
+        }
+
+        // 生成卡片数据
+        function generateCards() {
+            const currentTheme = cardIconThemes[gameConfig.theme] || cardIconThemes.emoji;
+            const selectedIcons = currentTheme.slice(0, gameConfig.pairCount);
+            const pairs = [...selectedIcons, ...selectedIcons];
+            gameState.cards = pairs
+                .map((icon, index) => ({ id: index, icon, matched: false }))
+                .sort(() => Math.random() - 0.5);
+        }
+
+        function applyColorTheme() {
+            const gradient = colorThemes[gameConfig.themeColor] || colorThemes.indigo;
+            document.body.style.background = gradient;
+            
+            // Update all card back colors
+            const cards = document.querySelectorAll('.card-back');
+            cards.forEach(card => {
+                card.style.background = gradient;
+            });
+        }
+
+        // 渲染卡片
+        function renderCards() {
+            elements.cardsGrid.innerHTML = '';
+            const totalCards = gameConfig.pairCount * 2;
+            let columns = 4;
+            if (totalCards > 32) columns = 8;
+            else if (totalCards > 24) columns = 6;
+            else if (totalCards > 16) columns = 5;
+            
+            elements.cardsGrid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+            
+            const gradient = colorThemes[gameConfig.themeColor] || colorThemes.indigo;
+            
+            gameState.cards.forEach((card, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.className = 'card';
+                cardElement.dataset.index = index;
+                
+                cardElement.innerHTML = `
+                    <div class="card-face card-back" style="background: ${gradient}"></div>
+                    <div class="card-face card-front">${card.icon}</div>
+                `;
+                
+                cardElement.addEventListener('click', () => handleCardClick(index));
+                elements.cardsGrid.appendChild(cardElement);
+            });
+        }
+
+        // 处理卡片点击
+        function handleCardClick(index) {
+            if (!gameState.canFlip || gameState.status !== 'playing') return;
+            
+            const card = gameState.cards[index];
+            const cardElement = document.querySelector(`[data-index="${index}"]`);
+            
+            if (card.matched || gameState.flippedCards.includes(index)) return;
+            
+            // 翻牌
+            cardElement.classList.add('flipped');
+            gameState.flippedCards.push(index);
+            
+            if (gameState.flippedCards.length === 2) {
+                gameState.moves++;
+                updateUI();
+                checkMatch();
+            }
+        }
+
+        // 检查配对
+        function checkMatch() {
+            gameState.canFlip = false;
+            const [index1, index2] = gameState.flippedCards;
+            const card1 = gameState.cards[index1];
+            const card2 = gameState.cards[index2];
+            
+            if (card1.icon === card2.icon) {
+                // 配对成功
+                setTimeout(() => {
+                    card1.matched = true;
+                    card2.matched = true;
+                    document.querySelector(`[data-index="${index1}"]`).classList.add('matched');
+                    document.querySelector(`[data-index="${index2}"]`).classList.add('matched');
+                    gameState.matchedPairs++;
+                    gameState.flippedCards = [];
+                    gameState.canFlip = true;
+                    updateUI();
+                    sendStateToMicroApp();
+                    
+                    if (gameState.matchedPairs === gameConfig.pairCount) {
+                        winGame();
+                    }
+                }, 500);
+            } else {
+                // 配对失败
+                setTimeout(() => {
+                    document.querySelector(`[data-index="${index1}"]`).classList.remove('flipped');
+                    document.querySelector(`[data-index="${index2}"]`).classList.remove('flipped');
+                    gameState.flippedCards = [];
+                    gameState.canFlip = true;
+                }, gameConfig.flipDuration);
+            }
+        }
+
+        // 开始游戏
+        function startGame() {
+            gameState.status = 'playing';
+            gameState.matchedPairs = 0;
+            gameState.moves = 0;
+            gameState.timeRemaining = gameConfig.timeLimit;
+            gameState.flippedCards = [];
+            gameState.canFlip = true;
+            
+            generateCards();
+            renderCards();
+            updateUI();
+            startTimer();
+            sendStateToMicroApp();
+            
+            elements.startBtn.textContent = '游戏进行中';
+            elements.startBtn.disabled = true;
+        }
+
+        // 重置游戏
+        function resetGame() {
+            stopTimer();
+            gameState.status = 'idle';
+            gameState.matchedPairs = 0;
+            gameState.moves = 0;
+            gameState.timeRemaining = gameConfig.timeLimit;
+            gameState.flippedCards = [];
+            gameState.canFlip = true;
+            
+            generateCards();
+            renderCards();
+            updateUI();
+            sendStateToMicroApp();
+            
+            elements.startBtn.textContent = '开始游戏';
+            elements.startBtn.disabled = false;
+            elements.modalOverlay.classList.remove('active');
+        }
+
+        // 计时器
+        function startTimer() {
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            
+            gameState.timerInterval = setInterval(() => {
+                gameState.timeRemaining--;
+                updateUI();
+                sendStateToMicroApp();
+                
+                if (gameState.timeRemaining <= 0) {
+                    loseGame();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+                gameState.timerInterval = null;
+            }
+        }
+
+        // 胜利
+        function winGame() {
+            stopTimer();
+            gameState.status = 'won';
+            sendStateToMicroApp();
+            
+            elements.modalIcon.textContent = '🎉';
+            elements.modalTitle.textContent = '恭喜获胜!';
+            elements.modalMessage.textContent = `你用 ${gameState.moves} 步完成了所有配对，剩余时间 ${gameState.timeRemaining} 秒`;
+            elements.modalOverlay.classList.add('active');
+        }
+
+        // 失败
+        function loseGame() {
+            stopTimer();
+            gameState.status = 'lost';
+            gameState.timeRemaining = 0;
+            updateUI();
+            sendStateToMicroApp();
+            
+            elements.modalIcon.textContent = '⏰';
+            elements.modalTitle.textContent = '时间到!';
+            elements.modalMessage.textContent = `你完成了 ${gameState.matchedPairs}/${gameConfig.pairCount} 对配对，用了 ${gameState.moves} 步`;
+            elements.modalOverlay.classList.add('active');
+        }
+
+        // 更新UI
+        function updateUI() {
+            elements.timeDisplay.textContent = gameState.timeRemaining;
+            elements.movesDisplay.textContent = gameState.moves;
+            elements.pairsDisplay.textContent = `${gameState.matchedPairs}/${gameConfig.pairCount}`;
+            
+            if (gameState.timeRemaining <= 10) {
+                elements.timeDisplay.classList.add('timer-warning');
+            } else {
+                elements.timeDisplay.classList.remove('timer-warning');
+            }
+        }
+
+        // 更新设置显示
+        function updateSettingsDisplay() {
+            elements.pairCountInput.value = gameConfig.pairCount;
+            elements.pairCountValue.textContent = `${gameConfig.pairCount} 对 (${gameConfig.pairCount * 2} 张卡片)`;
+            
+            elements.timeLimitInput.value = gameConfig.timeLimit;
+            elements.timeLimitValue.textContent = `${gameConfig.timeLimit} 秒`;
+            
+            elements.flipDurationInput.value = gameConfig.flipDuration / 1000;
+            elements.flipDurationValue.textContent = `${(gameConfig.flipDuration / 1000).toFixed(1)} 秒`;
+            
+            elements.themeInput.value = gameConfig.theme;
+            elements.colorInput.value = gameConfig.themeColor;
+        }
+
+        // 事件监听
+        function setupEventListeners() {
+            elements.startBtn.addEventListener('click', startGame);
+            elements.resetBtn.addEventListener('click', resetGame);
+            elements.playAgainBtn.addEventListener('click', resetGame);
+            
+            elements.endGameBtn.addEventListener('click', () => {
+                elements.modalOverlay.classList.remove('active');
+                resetGame();
+            });
+            
+            elements.settingsBtn.addEventListener('click', () => {
+                elements.settingsPanel.classList.toggle('active');
+            });
+            
+            elements.pairCountInput.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                elements.pairCountValue.textContent = `${value} 对 (${value * 2} 张卡片)`;
+            });
+            
+            elements.timeLimitInput.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                elements.timeLimitValue.textContent = `${value} 秒`;
+            });
+            
+            elements.flipDurationInput.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                elements.flipDurationValue.textContent = `${value.toFixed(1)} 秒`;
+            });
+            
+            elements.applySettingsBtn.addEventListener('click', () => {
+                gameConfig.pairCount = parseInt(elements.pairCountInput.value);
+                gameConfig.timeLimit = parseInt(elements.timeLimitInput.value);
+                gameConfig.flipDuration = parseFloat(elements.flipDurationInput.value) * 1000;
+                gameConfig.theme = elements.themeInput.value;
+                gameConfig.themeColor = elements.colorInput.value;
+                
+                elements.settingsPanel.classList.remove('active');
+                applyColorTheme();
+                resetGame();
+            });
+        }
+
+        // Micro-app 集成
+        function setupMicroAppIntegration() {
+            // 检测是否在 micro-app 环境中
+            if (window.microApp || window.__MICRO_APP_ENVIRONMENT__) {
+                elements.integrationStatus.classList.add('active');
+                console.log('[v0] Micro-app integration enabled');
+                
+                // 监听来自主应用的数据
+                window.addEventListener('datachange', (e) => {
+                    const data = e.detail.data;
+                    console.log('[v0] Received data from main app:', data);
+                    
+                    if (data.gameConfig) {
+                        // 更新游戏配置
+                        Object.assign(gameConfig, data.gameConfig);
+                        updateSettingsDisplay();
+                        resetGame();
+                    }
+                    
+                    if (data.command === 'start') {
+                        startGame();
+                    } else if (data.command === 'reset') {
+                        resetGame();
+                    }
+                });
+                
+                // 发送初始状态
+                sendStateToMicroApp();
+            }
+        }
+
+        // 向 micro-app 主应用发送状态
+        function sendStateToMicroApp() {
+            if (window.microApp) {
+                const stateData = {
+                    status: gameState.status,
+                    moves: gameState.moves,
+                    matchedPairs: gameState.matchedPairs,
+                    totalPairs: gameConfig.pairCount,
+                    timeRemaining: gameState.timeRemaining,
+                    config: gameConfig
+                };
+                
+                window.microApp.dispatch(stateData);
+                console.log('[v0] Sent state to main app:', stateData);
+            }
+        }
+
+        // 初始化
+        initGame();
+    </script>
+</body>
+</html>

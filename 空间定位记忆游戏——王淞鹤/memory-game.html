@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>空间定位记忆游戏</title>
+<style>
+    body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background: linear-gradient(180deg, #d7e8ff, #f7f9ff);
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    h1 {
+        font-size: 24px;
+        margin-top: 20px;
+        color: #333;
+    }
+
+    #gameInfo {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        font-size: 18px;
+        margin: 10px;
+    }
+
+    #grid {
+        display: grid;
+        gap: 8px;
+        width: 90vw;
+        height: 90vw;
+        max-width: 420px;
+        max-height: 420px;
+        margin-top: 20px;
+    }
+
+    .cell {
+        background: #e6ecf5;
+        border-radius: 12px;
+        transition: background 0.3s, transform 0.2s;
+    }
+
+    .cell.show {
+        background: #70a5ff;
+    }
+
+    .cell.correct {
+        background: #6aff9b;
+        transform: scale(1.1);
+    }
+
+    .cell.wrong {
+        background: #ff6b6b;
+        transform: scale(1.1);
+    }
+
+    #status {
+        margin-top: 15px;
+        font-size: 20px;
+        color: #444;
+    }
+
+    #btnStart {
+        margin-top: 20px;
+        padding: 12px 30px;
+        border-radius: 10px;
+        border: none;
+        background: #4f8bff;
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+
+<h1>空间定位记忆</h1>
+
+<div id="gameInfo">
+    <span>等级: <span id="level">1</span></span>
+    <span>得分: <span id="score">0</span></span>
+    <span>时间: <span id="time">0</span>s</span>
+</div>
+
+<div id="grid"></div>
+<div id="status"></div>
+
+<button id="btnStart">开始记忆</button>
+
+<script>
+let CONFIG = {
+    baseGrid: 2, // 初始网格大小
+    showTime: 1200, // 显示记忆图案时间
+};
+
+/* ====== 游戏变量 ====== */
+let level = 1;
+let score = 0;
+let timer = null;
+let time = 0;
+let gridSize = CONFIG.baseGrid;
+let answer = new Set();
+let clickingEnabled = false;
+
+/* ====== DOM ====== */
+const grid = document.getElementById("grid");
+const status = document.getElementById("status");
+const levelText = document.getElementById("level");
+const scoreText = document.getElementById("score");
+const timeText = document.getElementById("time");
+
+/* ====== Timer ====== */
+function startTimer() {
+    time = 0;
+    timeText.textContent = time;
+    timer = setInterval(() => {
+        time++;
+        timeText.textContent = time;
+    }, 1000);
+}
+
+/* ====== Grid Init ====== */
+function initGrid() {
+    grid.innerHTML = "";
+    gridSize = CONFIG.baseGrid + (level - 1);
+    grid.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+
+    for (let i = 0; i < gridSize * gridSize; i++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.index = i;
+
+        cell.onclick = () => {
+            if (!clickingEnabled) return;
+
+            let idx = Number(cell.dataset.index);
+            if (answer.has(idx)) {
+                cell.classList.add("correct");
+                answer.delete(idx);
+                score += 10;
+                scoreText.textContent = score;
+
+                if (answer.size === 0) {
+                    status.textContent = "🎉 恭喜！进入下一关";
+                    clickingEnabled = false;
+                    clearInterval(timer);
+                    setTimeout(() => {
+                        level++;
+                        levelText.textContent = level;
+                        startGame();
+                    }, 1200);
+                }
+            } else {
+                cell.classList.add("wrong");
+                status.textContent = "❌ 错误！请再试一次";
+                clickingEnabled = false;
+                clearInterval(timer);
+            }
+        };
+
+        grid.appendChild(cell);
+    }
+}
+
+/* ====== 游戏流程 ====== */
+function startGame() {
+    initGrid();
+    status.textContent = "请记住蓝色位置…";
+    answer = new Set();
+    clickingEnabled = false;
+
+    // 随机选择答案
+    let count = Math.max(2, Math.floor(gridSize));
+    while (answer.size < count) {
+        answer.add(Math.floor(Math.random() * gridSize * gridSize));
+    }
+
+    // 显示答案
+    answer.forEach(i => {
+        grid.children[i].classList.add("show");
+    });
+
+    // 显示完毕 → 开始还原
+    setTimeout(() => {
+        document.querySelectorAll(".cell").forEach(c => c.classList.remove("show"));
+        status.textContent = "请点击刚才的位置";
+        clickingEnabled = true;
+        startTimer();
+    }, CONFIG.showTime);
+}
+
+/* ====== 按钮绑定 ====== */
+document.getElementById("btnStart").onclick = () => {
+    level = 1;
+    score = 0;
+    scoreText.textContent = score;
+    levelText.textContent = level;
+    startGame();
+};
+
+/* ====== micro-APP 接口 ====== */
+if (window.microApp) {
+    // 接收 micro-APP 配置数据
+    window.microApp.addDataListener((data) => {
+        if (data.config) {
+            CONFIG = { ...CONFIG, ...data.config };
+        }
+    });
+
+    // 通知 micro-APP 游戏已准备好
+    window.microApp.dispatch({
+        type: 'game-ready',
+        data: { name: 'space-memory-game' }
+    });
+}
+</script>
+</body>
+</html>
