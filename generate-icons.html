@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Icon Generator</title></head>
+<body>
+<p>点击下方按钮生成所有图标，然后右键保存。</p>
+<div id="output"></div>
+<script>
+const sizes = [
+  { name: 'icon-192.png', size: 192, maskable: false },
+  { name: 'icon-512.png', size: 512, maskable: false },
+  { name: 'icon-maskable-192.png', size: 192, maskable: true },
+  { name: 'icon-maskable-512.png', size: 512, maskable: true },
+];
+
+const out = document.getElementById('output');
+
+sizes.forEach(({ name, size, maskable }) => {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, '#4A90D9');
+  grad.addColorStop(1, '#6DB3E8');
+
+  if (maskable) {
+    // maskable: fill entire canvas
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+  } else {
+    // regular: rounded rect
+    const r = size * 0.18;
+    ctx.beginPath();
+    ctx.roundRect(0, 0, size, size, r);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+
+  // Emoji 🧩
+  const fontSize = maskable ? size * 0.4 : size * 0.5;
+  ctx.font = `${fontSize}px "Segoe UI Emoji","Apple Color Emoji",sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🧩', size / 2, size / 2 + (maskable ? 0 : size * 0.02));
+
+  // Label
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  const labelSize = size * 0.08;
+  ctx.font = `bold ${labelSize}px "Microsoft YaHei",sans-serif`;
+  ctx.fillText('认知训练', size / 2, size * 0.82);
+
+  const h3 = document.createElement('h3');
+  h3.textContent = `${name} (${size}×${size})`;
+  out.appendChild(h3);
+  out.appendChild(canvas);
+
+  const link = document.createElement('a');
+  link.download = name;
+  link.href = canvas.toDataURL('image/png');
+  link.textContent = `下载 ${name}`;
+  link.style.cssText = 'display:block;margin:8px 0 20px;color:#4A90D9';
+  out.appendChild(link);
+});
+</script>
+</body>
+</html>
