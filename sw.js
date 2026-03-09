@@ -15,6 +15,9 @@ const PRECACHE_URLS = [
   './index.html',
   './app.js',
   './games-manifest.json',
+  './manifest.webmanifest',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
 ];
 
 // ── Install：预缓存 Shell ──────────────────────────────────────────────

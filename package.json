@@ -1,0 +1,21 @@
+{
+  "name": "cognitive-training-games",
+  "version": "1.0.0",
+  "description": "阿尔茨海默症认知功能训练游戏平台",
+  "private": true,
+  "scripts": {
+    "generate-icons": "node scripts/generate-icons.js",
+    "sync": "node scripts/sync-www.js",
+    "cap:sync": "npm run sync && npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "cap:open:ios": "npx cap open ios",
+    "cap:build:android": "npm run sync && npx cap sync android && cd android && gradlew assembleDebug",
+    "cap:run:android": "npm run sync && npx cap run android",
+    "serve": "npx serve -l 8080"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.2.0",
+    "@capacitor/cli": "^8.2.0",
+    "@capacitor/core": "^8.2.0"
+  }
+}
